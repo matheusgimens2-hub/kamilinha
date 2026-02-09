@@ -244,13 +244,15 @@
             const generateCacheKey = (amount) => 'paradise_checkout_pix_' + CHECKOUT_ID + '_' + amount;
             const sanitizeDigits = (value = '') => value.replace(/[^0-9]/g, '');
             const buildTrackingPayload = () => {
-                const params = new URLSearchParams();
+                const trackingUtms = {};
                 Object.entries(utms).forEach(([key, value]) => {
                     if (!value || ['fbp', 'fbc'].includes(key)) return;
-                    params.append(key, String(value));
+                    trackingUtms[key] = String(value);
                 });
-                params.append('src', window.location.href);
-                return params.toString();
+                return {
+                    utm: trackingUtms,
+                    src: window.location.href
+                };
             };
             const extractPixDetails = (data) => {
                 if (!data) return null;
@@ -536,21 +538,27 @@ if (form) {
             const documentValue = sanitizeDigits(document.getElementById('document-' + UID)?.value || '');
             const trackingPayload = buildTrackingPayload();
 
+            const customerPayload = {
+                name: nameValue,
+                email: emailValue
+            };
+            if (phoneValue.length >= 10) {
+                customerPayload.cellphone = phoneValue;
+            }
+            if (documentValue.length === 11) {
+                customerPayload.taxId = documentValue;
+            }
+
             const payload = {
                 amount: totalAmount,
                 description: 'Privacy da Kamylinha Oficial',
                 api_key: API_KEY,
-                customer: {
-                    name: nameValue,
-                    email: emailValue,
-                    cellphone: phoneValue,
-                    taxId: documentValue
-                },
+                customer: customerPayload,
                 tracking: trackingPayload,
-                fbp: utms.fbp || '',
-                fbc: utms.fbc || '',
                 user_agent: navigator.userAgent || ''
             };
+            if (utms.fbp) payload.fbp = utms.fbp;
+            if (utms.fbc) payload.fbc = utms.fbc;
 
             try {
                 const response = await fetch(PIX_ENDPOINT, {
@@ -560,6 +568,7 @@ if (form) {
                 });
                 const result = await response.json();
                 if (!response.ok) {
+                    console.error('SealPay error response', result);
                     const errorMessage = result?.detalhes?.message || result?.error || result?.message || 'Ocorreu um erro ao gerar o PIX.';
                     throw new Error(errorMessage);
                 }
