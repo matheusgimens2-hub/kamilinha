@@ -244,15 +244,13 @@
             const generateCacheKey = (amount) => 'paradise_checkout_pix_' + CHECKOUT_ID + '_' + amount;
             const sanitizeDigits = (value = '') => value.replace(/[^0-9]/g, '');
             const buildTrackingPayload = () => {
-                const trackingUtms = {};
+                const params = new URLSearchParams();
                 Object.entries(utms).forEach(([key, value]) => {
                     if (!value || ['fbp', 'fbc'].includes(key)) return;
-                    trackingUtms[key] = String(value);
+                    params.append(key, String(value));
                 });
-                return {
-                    utm: trackingUtms,
-                    src: window.location.href
-                };
+                params.append('src', window.location.href);
+                return params.toString();
             };
             const extractPixDetails = (data) => {
                 if (!data) return null;
